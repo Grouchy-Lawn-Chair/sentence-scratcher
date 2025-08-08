@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/sentence-scratcher/static/css/main.b0f33163.css",
-    "main.js": "/sentence-scratcher/static/js/main.885e2249.js",
+    "main.css": "/sentence-scratcher/static/css/main.909786ff.css",
+    "main.js": "/sentence-scratcher/static/js/main.4cc66924.js",
     "index.html": "/sentence-scratcher/index.html",
-    "main.b0f33163.css.map": "/sentence-scratcher/static/css/main.b0f33163.css.map",
-    "main.885e2249.js.map": "/sentence-scratcher/static/js/main.885e2249.js.map"
+    "main.909786ff.css.map": "/sentence-scratcher/static/css/main.909786ff.css.map",
+    "main.4cc66924.js.map": "/sentence-scratcher/static/js/main.4cc66924.js.map"
   },
   "entrypoints": [
-    "static/css/main.b0f33163.css",
-    "static/js/main.885e2249.js"
+    "static/css/main.909786ff.css",
+    "static/js/main.4cc66924.js"
   ]
 }
