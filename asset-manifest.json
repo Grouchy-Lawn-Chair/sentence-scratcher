@@ -1,14 +1,14 @@
 {
   "files": {
-    "main.css": "/sentence-scratcher/static/css/main.993b4bf8.css",
-    "main.js": "/sentence-scratcher/static/js/main.f0d8ca4e.js",
-    "static/media/cat-bg.png": "/sentence-scratcher/static/media/cat-bg.77b9b0475c0288173fdb.png",
+    "main.css": "/sentence-scratcher/static/css/main.9373a979.css",
+    "main.js": "/sentence-scratcher/static/js/main.27522961.js",
+    "static/media/cat-bg.png": "/sentence-scratcher/static/media/cat-bg.0573c8bcd2c98afaad68.png",
     "index.html": "/sentence-scratcher/index.html",
-    "main.993b4bf8.css.map": "/sentence-scratcher/static/css/main.993b4bf8.css.map",
-    "main.f0d8ca4e.js.map": "/sentence-scratcher/static/js/main.f0d8ca4e.js.map"
+    "main.9373a979.css.map": "/sentence-scratcher/static/css/main.9373a979.css.map",
+    "main.27522961.js.map": "/sentence-scratcher/static/js/main.27522961.js.map"
   },
   "entrypoints": [
-    "static/css/main.993b4bf8.css",
-    "static/js/main.f0d8ca4e.js"
+    "static/css/main.9373a979.css",
+    "static/js/main.27522961.js"
   ]
 }
