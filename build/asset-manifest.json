@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/sentence-scratcher/static/css/main.45b0b30c.css",
+    "main.js": "/sentence-scratcher/static/js/main.c384ffd3.js",
+    "index.html": "/sentence-scratcher/index.html",
+    "main.45b0b30c.css.map": "/sentence-scratcher/static/css/main.45b0b30c.css.map",
+    "main.c384ffd3.js.map": "/sentence-scratcher/static/js/main.c384ffd3.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.45b0b30c.css",
+    "static/js/main.c384ffd3.js"
+  ]
+}

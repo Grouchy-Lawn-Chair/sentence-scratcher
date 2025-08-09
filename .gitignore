@@ -1,0 +1,8 @@
+node_modules/
+build/
+dist/
+recovered-src/
+.recovered-src/
+.env
+.DS_Store
+Thumbs.db
