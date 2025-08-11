@@ -84,7 +84,7 @@ export default function App() {
           <section className="help-section">
             <h3>Step 1, Work one chunk at a time</h3>
             <p><strong>Do not paste a whole report.</strong> You will get weak output.</p>
-            <p>Copy <strong>1 to 2 paragraphs</strong> at a time. It takes longer, the results are better.</p>
+            <p>Copy <strong>1 to 2 paragraphs</strong> at a time. It takes longer, but the results are better.</p>
           </section>
 
           <section className="help-section">

@@ -1,9 +1,13 @@
 // src/TiptapEditor.jsx
 import "use-sync-external-store/shim";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import Heading from "@tiptap/extension-heading";
+import BulletList from "@tiptap/extension-bullet-list";
+import OrderedList from "@tiptap/extension-ordered-list";
+import ListItem from "@tiptap/extension-list-item";
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "prosemirror-state";
 import { Decoration, DecorationSet } from "prosemirror-view";
@@ -12,31 +16,47 @@ import {
   analyzeSentence,
   countWords,
   countSentences,
+  countSyllables,
   calculateFleschKincaidGrade,
   calculateFleschReadingEase,
 } from "./readabilityUtils";
 import { SIMPLE_WORD_MAP } from "./simpleWordMap";
 
-// feature switches, thresholds
-const ENABLE_BLUE = false;
+/* ---------------- live settings stored at module scope ---------------- */
+let CURRENT_TARGET_GRADE = 6;
+let CURRENT_SHOW_HARD = true;
+let CURRENT_EASY_SET = new Set();
+
+/* ---------------- feature switches / thresholds ---------------- */
+const ENABLE_BLUE = true;
 const LONG_SENTENCE_WORDS = 15;
-const HEMI_HARD_WORDS = 20;
-const HEMI_VERY_HARD_WORDS = 25;
+
 const DELTA_HARD = 1;
 const DELTA_VERY_HARD = 3;
+
 const MIN_YELLOW_WORDS_FOR_GRADE = 14;
 const MIN_RED_WORDS_FOR_GRADE = 18;
+
 const HARD_SYLLABLES_BY_TARGET = { 6: 3, 8: 4, 10: 5 };
 const DEBOUNCE_MS = 250;
 
+/* ---------------- helpers ---------------- */
 const classify = (words, grade, target) => {
   const delta = grade - target;
-  if (words >= HEMI_VERY_HARD_WORDS) return "red";
-  if (words >= HEMI_HARD_WORDS) return "yellow";
-  if (delta > DELTA_VERY_HARD && words >= MIN_RED_WORDS_FOR_GRADE) return "red";
-  if (delta > DELTA_HARD && words >= MIN_YELLOW_WORDS_FOR_GRADE) return "yellow";
+  if (words < 8) return null;
+
+  if (delta >= DELTA_VERY_HARD && words >= MIN_RED_WORDS_FOR_GRADE) return "red";
+  if (delta >= DELTA_HARD && words >= MIN_YELLOW_WORDS_FOR_GRADE) return "yellow";
+
   if (ENABLE_BLUE && words >= LONG_SENTENCE_WORDS) return "blue";
   return null;
+};
+
+const tooltipMessage = (color) => {
+  if (color === "red") return "Much harder than your target—simplify or split.";
+  if (color === "yellow") return "A bit harder than your target—try simpler words or a split.";
+  if (color === "blue") return "Long sentence—consider a split.";
+  return "";
 };
 
 const smartCase = (orig, simple) => {
@@ -46,51 +66,22 @@ const smartCase = (orig, simple) => {
   return simple;
 };
 
-const syllables = (word) => {
-  const w = word.toLowerCase().replace(/[^a-z']/g, "");
-  if (!w) return 0;
-  const exceptions = { queue: 2, people: 2, business: 2, every: 2, family: 3, chocolate: 3 };
-  if (w in exceptions) return exceptions[w];
-  let count = 0;
-  const vowels = "aeiouy";
-  for (let i = 0; i < w.length; i++) {
-    if (vowels.includes(w[i]) && !vowels.includes(w[i - 1] || "")) count++;
-  }
-  if (w.endsWith("e")) count--;
-  return Math.max(1, count);
-};
-
 const isAllCaps = (w) => w.length > 1 && w === w.toUpperCase();
 const isUrlLike = (w) => /^https?:\/\//i.test(w) || /^www\./i.test(w);
 const isNumberLike = (w) => /^\d/.test(w);
 const isLikelyProperNoun = (w) => /^[A-Z][a-z]/.test(w) && !isAllCaps(w);
+const splitIntoSentences = (text) => text.match(/[^.!?…]+[.!?…]*/g) || [];
 
-// Tooltip text
-const tooltipMessage = (color, { byLengthHard, byLengthYellow, byDeltaHard, byDeltaYellow }) => {
-  if (color === "red") {
-    if (byLengthHard && byDeltaHard) return "Very hard, long and above target, split and simplify.";
-    if (byLengthHard) return "Very hard, 25 or more words, split this sentence.";
-    if (byDeltaHard) return "Very hard, about 3 grades over target, split and simplify.";
-  }
-  if (color === "yellow") {
-    if (byLengthYellow && byDeltaYellow) return "A bit long and above your target, consider a small rewrite.";
-    if (byLengthYellow) return "A bit long, 20 or more words, consider a split.";
-    if (byDeltaYellow) return "Slightly above your target, try simpler words or a split.";
-  }
-  if (color === "blue") return "Long sentence, consider a split.";
-  return "";
-};
-
-// Decoration plugin
+/* ---------------- dynamic highlight extension ---------------- */
 const decoKey = new PluginKey("sentenceHighlights");
 
 const DynamicHighlights = Extension.create({
   name: "dynamicHighlights",
   addOptions() {
     return {
-      getTargetGrade: () => 6,
-      getShowHardWords: () => true,
-      getEasySet: () => new Set(),
+      getTargetGrade: () => CURRENT_TARGET_GRADE,
+      getShowHardWords: () => CURRENT_SHOW_HARD,
+      getEasySet: () => CURRENT_EASY_SET,
     };
   },
   addProseMirrorPlugins() {
@@ -111,8 +102,7 @@ const DynamicHighlights = Extension.create({
         if (!text) return;
 
         const blockFrom = pos + 1;
-
-        const parts = text.match(/[^.!?…]+[.!?…]*/g) || [];
+        const parts = splitIntoSentences(text);
         let searchFrom = 0;
 
         for (const raw of parts) {
@@ -128,19 +118,12 @@ const DynamicHighlights = Extension.create({
           const from = blockFrom + startInNode;
           const to = from + s.length;
 
-          const delta = grade - targetGrade;
-          const byLengthHard = wordCount >= HEMI_VERY_HARD_WORDS;
-          const byLengthYellow = wordCount >= HEMI_HARD_WORDS;
-          const byDeltaHard = delta > DELTA_VERY_HARD && wordCount >= MIN_RED_WORDS_FOR_GRADE;
-          const byDeltaYellow = delta > DELTA_HARD && wordCount >= MIN_YELLOW_WORDS_FOR_GRADE;
-
           if (color) {
-            const tip = tooltipMessage(color, { byLengthHard, byLengthYellow, byDeltaHard, byDeltaYellow });
             decos.push(
               Decoration.inline(from, to, {
                 nodeName: "mark",
                 "data-highlight-color": color,
-                "data-tip": tip || "",
+                "data-tip": tooltipMessage(color),
               })
             );
           }
@@ -158,13 +141,12 @@ const DynamicHighlights = Extension.create({
               if (tokenIndex > 0 && isLikelyProperNoun(wOrig)) { tokenIndex++; continue; }
               if (isAllCaps(wOrig)) { tokenIndex++; continue; }
 
+              const syl = countSyllables(w);
+              const isHard = syl >= (HARD_SYLLABLES_BY_TARGET[targetGrade] ?? 3);
               const isEasy = easySet.has(lower);
-              const syl = syllables(w);
-              const isHardBySyll = syl >= thresh;
 
-              if (!isEasy && isHardBySyll) {
-                const simple = SIMPLE_WORD_MAP[lower];
-                const suggestion = simple ? smartCase(wOrig, simple) : null;
+              if (!isEasy && isHard) {
+                const suggestion = SIMPLE_WORD_MAP[lower] ? smartCase(wOrig, SIMPLE_WORD_MAP[lower]) : null;
                 const tip = suggestion
                   ? `Likely hard word, try “${suggestion}”.`
                   : "Likely hard word, consider a simpler option.";
@@ -174,7 +156,6 @@ const DynamicHighlights = Extension.create({
                   Decoration.inline(wFrom, wTo, {
                     "data-hard-word": "1",
                     "data-tip": tip || "",
-                    // CSS handles the underline, we still set a minimal style to keep Safari happy
                     style:
                       "text-decoration-line: underline; text-decoration-style: dotted; text-decoration-color: #7c3aed; text-decoration-thickness: 2px;",
                   })
@@ -197,7 +178,12 @@ const DynamicHighlights = Extension.create({
         state: {
           init: (_, state) => buildDecorations(state.doc),
           apply: (tr, old, _oldState, newState) => {
-            if (tr.docChanged || tr.getMeta(decoKey) === "recompute") {
+            const meta = tr.getMeta(decoKey);
+            if (
+              tr.docChanged ||
+              meta === "recompute" ||
+              (meta && typeof meta === "object" && "recompute" in meta)
+            ) {
               return buildDecorations(newState.doc);
             }
             return old;
@@ -213,6 +199,7 @@ const DynamicHighlights = Extension.create({
   },
 });
 
+/* ---------------- main component ---------------- */
 export default function TiptapEditor({ targetGrade }) {
   const [stats, setStats] = useState({ wordCount: 0, sentenceCount: 0, grade: 0, ease: 0 });
   const [showHardWords, setShowHardWords] = useState(() => {
@@ -220,18 +207,19 @@ export default function TiptapEditor({ targetGrade }) {
   });
   const [easySet, setEasySet] = useState(() => new Set(MIN_EASY_WORDS));
 
+  useEffect(() => { CURRENT_TARGET_GRADE = targetGrade; }, [targetGrade]);
+  useEffect(() => { CURRENT_SHOW_HARD = showHardWords; }, [showHardWords]);
+  useEffect(() => { CURRENT_EASY_SET = easySet; }, [easySet]);
+
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Placeholder.configure({
-        placeholder: "Start typing, or paste your text here",
-        includeChildren: true,
-      }),
-      DynamicHighlights.configure({
-        getTargetGrade: () => targetGrade,
-        getShowHardWords: () => showHardWords,
-        getEasySet: () => easySet,
-      }),
+      StarterKit.configure({ heading: false, bulletList: false, orderedList: false, listItem: false }),
+      Heading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
+      BulletList,
+      OrderedList,
+      ListItem,
+      Placeholder.configure({ placeholder: "Start typing, or paste your text here", includeChildren: true }),
+      DynamicHighlights,
     ],
     content: "",
     editorProps: {
@@ -242,10 +230,9 @@ export default function TiptapEditor({ targetGrade }) {
     },
   });
 
-  // load Dale–Chall easy words once
   useEffect(() => {
     fetch(process.env.PUBLIC_URL + "/daleChallEasyWords.json")
-      .then(r => r.ok ? r.json() : [])
+      .then(r => (r.ok ? r.json() : []))
       .then(list => {
         if (Array.isArray(list) && list.length) {
           setEasySet(new Set(list.map(w => w.toLowerCase())));
@@ -254,14 +241,12 @@ export default function TiptapEditor({ targetGrade }) {
       .catch(() => {});
   }, []);
 
-  // re build decorations when toggles or targetGrade change
   useEffect(() => {
     if (!editor) return;
-    const tr = editor.state.tr.setMeta(decoKey, "recompute");
+    const tr = editor.state.tr.setMeta(decoKey, { recompute: Date.now() });
     editor.view.dispatch(tr);
   }, [editor, targetGrade, showHardWords, easySet]);
 
-  // stats, run on content update only
   const debouncedStats = useCallback(() => {
     if (!editor) return;
     const fullText = editor.getText();
@@ -280,11 +265,10 @@ export default function TiptapEditor({ targetGrade }) {
       handler.tid = window.setTimeout(debouncedStats, DEBOUNCE_MS);
     };
     editor.on("update", handler);
-    handler(); // first pass
+    handler();
     return () => editor.off("update", handler);
   }, [editor, debouncedStats]);
 
-  // singleton tooltip that follows the mouse
   useEffect(() => {
     if (!editor) return;
     const root = editor.view.dom;
@@ -353,27 +337,28 @@ export default function TiptapEditor({ targetGrade }) {
     <div className="space-y-4">
       {/* toolbar */}
       <div className="flex flex-wrap gap-2 mb-2">
-        <button onClick={() => editor.chain().focus().toggleBold().run()} className="px-2 py-1 border rounded">Bold</button>
-        <button onClick={() => editor.chain().focus().toggleItalic().run()} className="px-2 py-1 border rounded">Italic</button>
-        <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className="px-2 py-1 border rounded">H1</button>
-        <button onClick={() => editor.chain().focus().toggleBulletList().run()} className="px-2 py-1 border rounded">• List</button>
-        <button onClick={() => editor.chain().focus().toggleOrderedList().run()} className="px-2 py-1 border rounded">1. List</button>
+        <button onClick={() => editor.chain().focus().toggleBold().run()} className={`px-2 py-1 border rounded ${editor.isActive('bold') ? 'bg-gray-200' : ''}`} aria-pressed={editor.isActive('bold')}>Bold</button>
+        <button onClick={() => editor.chain().focus().toggleItalic().run()} className={`px-2 py-1 border rounded ${editor.isActive('italic') ? 'bg-gray-200' : ''}`} aria-pressed={editor.isActive('italic')}>Italic</button>
+        <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} className={`px-2 py-1 border rounded ${editor.isActive('heading', { level: 1 }) ? 'bg-gray-200' : ''}`} aria-pressed={editor.isActive('heading', { level: 1 })} title="Heading 1">H1</button>
+        <button onClick={() => editor.chain().focus().toggleBulletList().run()} className={`px-2 py-1 border rounded ${editor.isActive('bulletList') ? 'bg-gray-200' : ''}`} aria-pressed={editor.isActive('bulletList')} title="Bulleted list">• List</button>
+        <button onClick={() => editor.chain().focus().toggleOrderedList().run()} className={`px-2 py-1 border rounded ${editor.isActive('orderedList') ? 'bg-gray-200' : ''}`} aria-pressed={editor.isActive('orderedList')} title="Ordered list">1. List</button>
+        <button onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} className="px-2 py-1 border rounded" title="Clear styles">Clear</button>
       </div>
 
       {/* legend */}
       <div className="flex flex-wrap gap-4 text-xs mb-2 items-center">
         <div className="flex items-center gap-1">
           <span className="legend-red w-3 h-3 border inline-block"></span>
-          <span>Very hard, 25+ words, or grade +3 with 18+ words</span>
+          <span>Much harder than target</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="legend-yellow w-3 h-3 border inline-block"></span>
-          <span>Slightly over, 20+ words, or grade +1 with 14+ words</span>
+          <span>A bit harder than target</span>
         </div>
         {ENABLE_BLUE && (
           <div className="flex items-center gap-1">
             <span className="legend-blue w-3 h-3 border inline-block"></span>
-            <span>Long, {LONG_SENTENCE_WORDS}+ words</span>
+            <span>Long sentence</span>
           </div>
         )}
         <div className="flex items-center gap-2 ml-auto">
@@ -383,8 +368,8 @@ export default function TiptapEditor({ targetGrade }) {
               checked={showHardWords}
               onChange={(e) => setShowHardWords(e.target.checked)}
             />
-            <span className="legend-underline-purple">Aa</span>
-            <span>Likely hard word</span>
+            {/* underline is on the label text now; no bold Aa glyph */}
+            <span className="legend-underline-purple">Likely hard word</span>
           </label>
         </div>
       </div>
@@ -402,6 +387,7 @@ export default function TiptapEditor({ targetGrade }) {
   );
 }
 
+/* minimal easy-word seed; replaced by daleChallEasyWords.json on load */
 const MIN_EASY_WORDS = [
   "a","about","after","all","also","an","and","any","are","as","at","back","be","because","been","before","but","by",
   "can","come","could","day","did","do","down","each","even","every","few","find","first","for","from","get","go",
