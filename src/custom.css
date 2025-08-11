@@ -1,0 +1,150 @@
+/* Help accordion */
+.help-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.help-summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 700;
+  list-style: none;
+  background: #f9fafb;
+}
+
+.help-card[open] .help-summary {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.help-body {
+  padding: 14px;
+}
+
+.help-section + .help-section {
+  margin-top: 16px;
+}
+
+.help-section h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.help-pre {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  margin: 8px 0;
+}
+
+.help-actions {
+  margin: 6px 0 2px;
+}
+
+.btn {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #f9fafb;
+}
+
+.help-note {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.help-list {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.help-list li + li {
+  margin-top: 4px;
+}
+
+/* purple underline for hard words */
+.editor-content span[data-hard-word="1"] {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: #7c3aed; /* purple */
+  text-decoration-thickness: 2px;
+}
+
+/* sample for legend */
+.legend-underline-purple {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: #7c3aed; /* same purple as hard-word underline */
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  font-weight: 400; /* not bold */
+}
+
+/* legend squares */
+.legend-yellow { background-color: #fff3b0; } /* soft yellow */
+.legend-red    { background-color: #ffd1d1; } /* soft red */
+.legend-blue   { background-color: #dbeafe; } /* soft blue */
+
+/* sentence highlights by color */
+mark[data-highlight-color="yellow"] {
+  background-color: #fff3b0;
+  border: 1px solid #facc15;
+  border-radius: 2px;
+  padding: 0 0.08em;
+}
+mark[data-highlight-color="red"] {
+  background-color: #ffd1d1;
+  border: 1px solid #f87171;
+  border-radius: 2px;
+  padding: 0 0.08em;
+}
+mark[data-highlight-color="blue"] {
+  background-color: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 2px;
+  padding: 0 0.08em;
+}
+
+/* Basic typography for the editor */
+.editor-content h1 {
+  font-size: 1.5rem;      /* ~24px */
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0.75rem 0 0.5rem;
+}
+.editor-content h2 {
+  font-size: 1.25rem;     /* ~20px */
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0.75rem 0 0.5rem;
+}
+.editor-content h3 {
+  font-size: 1.125rem;    /* ~18px */
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.editor-content ul,
+.editor-content ol {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+.editor-content ul { list-style: disc; }
+.editor-content ol { list-style: decimal; }
+.editor-content li { margin: 0.25rem 0; }
+
